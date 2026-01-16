@@ -29,10 +29,18 @@ env-version-tracker config remote \
 
 ### 2. Optional: Auto-track after git push
 
-If you want the tool to ask for version info automatically after each `git push`:
+If you want the tool to ask for version info automatically after each git push:
 
 ```bash
 env-version-tracker setup-hook
+```
+
+This creates a `gpush` alias that you can use instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
+
+**To override `git push` directly (may cause conflicts):**
+
+```bash
+env-version-tracker setup-push-alias
 ```
 
 ### 3. Track a deployment
@@ -46,7 +54,15 @@ env-version-tracker push major production
 ```
 
 **With alias installed:**
-Just do `git push` normally. After a successful push, you'll be prompted for version tag and environment.
+Use `git gpush` instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
+
+```bash
+git gpush origin main
+# After successful push, prompts appear automatically:
+# ? What version tag? (Use arrow keys)
+# ? Which environment?
+# ? Track the author? (y/N)
+```
 
 ## Commands
 
@@ -61,9 +77,15 @@ Just do `git push` normally. After a successful push, you'll be prompted for ver
 - `environment`: `dev`, `staging`, `preprod`, `production`
 - `--track-author`: Include git author email
 
-**`setup-hook`** - Enable auto-tracking after git push
+**`setup-hook`** - Enable auto-tracking by creating a `gpush` git alias
 
-**`remove-hook`** - Disable auto-tracking
+Creates a `git gpush` command that wraps `git push` and triggers version tracking after successful pushes. This is the recommended approach to avoid conflicts with the standard `git push` command.
+
+**`setup-push-alias`** - Override `git push` directly with version tracking
+
+⚠️ **Warning:** This overrides the standard `git push` command and may cause conflicts. Use `setup-hook` instead for a safer approach.
+
+**`remove-hook`** - Remove git aliases (`gpush` and `push` if configured)
 
 ## How it works
 
@@ -74,18 +96,21 @@ Just do `git push` normally. After a successful push, you'll be prompted for ver
 
 ## What gets created
 
-After running `setup-hook`, a git alias 'push' is configured in your local git config.
+After running `setup-hook`, a git alias `gpush` is configured in your local git config.
 
 Your project will have:
 
 ```
 your-project/
 ├── .env-version-tracker/
-│   └── config.json          # Your config
-└── versions.json            # Version history (if local storage)
+│   ├── config.json              # Your config
+│   └── git-push-wrapper.sh     # Git push wrapper script
+└── versions.json                # Version history (if local storage)
 ```
 
 Config is stored in `.env-version-tracker/config.json` per project.
+
+**Debug logs:** If something goes wrong, check `/tmp/env-version-tracker-debug.log` for detailed logs.
 
 ## Examples
 
@@ -105,11 +130,14 @@ env-version-tracker push minor staging --track-author true
 **With alias (automatic):**
 
 ```bash
-git push
+git gpush origin main
 # After successful push, prompts appear automatically:
+# 🚀 Post-push handler triggered!
+# Tracking version...
 # ? What version tag? (Use arrow keys)
 # ? Which environment?
 # ? Track the author? (y/N)
+# ✅ Version tracking completed!
 ```
 
 ## Data format
@@ -138,6 +166,23 @@ Versions are stored with:
 ```
 
 MongoDB uses the same structure.
+
+## Troubleshooting
+
+**Alias not working?**
+
+- Check if the alias exists: `git config --local --get alias.gpush`
+- Verify the script exists: `ls -la .env-version-tracker/git-push-wrapper.sh`
+- Check debug logs: `cat /tmp/env-version-tracker-debug.log`
+
+**Want to remove the alias?**
+
+```bash
+env-version-tracker remove-hook
+# Or manually:
+git config --local --unset alias.gpush
+git config --local --unset alias.push
+```
 
 ## TODO
 
