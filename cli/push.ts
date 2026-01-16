@@ -7,6 +7,36 @@ import { Config, VersionPayload, PushOptions, Storage } from "./types";
 
 const DEFAULT_VERSION = "1.0.0";
 
+/**
+ * Get the .env file path for a specific environment
+ */
+function getEnvFileForEnvironment(
+  config: Config,
+  environment: string
+): string | null {
+  if (config.storage !== "remote") {
+    return null;
+  }
+
+  const envFiles = config.storageEnvFiles || {};
+  const envKey = environment.toLowerCase();
+
+  // Map environment names
+  const envMap: Record<string, keyof typeof envFiles> = {
+    dev: "dev",
+    development: "dev",
+    staging: "staging",
+    preprod: "preprod",
+    prod: "production",
+    production: "production",
+  };
+
+  const mappedKey = envMap[envKey] || (envKey as keyof typeof envFiles);
+  const envFile = envFiles[mappedKey] || config.storageEnvFile; // Legacy fallback
+
+  return envFile || null;
+}
+
 function exec(command: string): string {
   try {
     return execSync(command, { encoding: "utf-8", stdio: "pipe" }).trim();
@@ -64,7 +94,21 @@ async function getLastSavedVersion(
     }
 
     if (config.storage === "remote") {
-      storage = new MongoStorage(config);
+      // Get the env file for this environment
+      const envFile = getEnvFileForEnvironment(config, environment);
+      if (!envFile) {
+        throw new Error(
+          `No .env file configured for environment "${environment}"`
+        );
+      }
+
+      // Create a config with the environment-specific env file
+      const envConfig: Config = {
+        ...config,
+        storageEnvFile: envFile,
+      };
+
+      storage = new MongoStorage(envConfig);
       if (storage.init) {
         await storage.init();
       }
@@ -137,6 +181,42 @@ export async function push(
 
     if (!config.storage) {
       throw new Error("Storage not configured. Run 'config' command first.");
+    }
+
+    // For remote storage, check if env file is configured for this environment
+    if (config.storage === "remote") {
+      const envFile = getEnvFileForEnvironment(config, environment);
+
+      if (!envFile) {
+        const envKey = environment.toLowerCase();
+        const envMap: Record<string, string> = {
+          dev: "dev",
+          development: "dev",
+          staging: "staging",
+          preprod: "preprod",
+          prod: "production",
+          production: "production",
+        };
+        const mappedKey = envMap[envKey] || envKey;
+
+        console.error(
+          `\n❌ Error: No .env file configured for environment "${environment}"`
+        );
+        console.log("\n📝 To configure, run:");
+        console.log(
+          `  evt config remote --env-file-${mappedKey} <path-to-env-file>`
+        );
+        console.log("\nExample:");
+        console.log(
+          `  evt config remote --env-file-${mappedKey} .env.${mappedKey}`
+        );
+        console.log("\nOr configure for all environments:");
+        console.log("  evt config remote --storage-env-file .env");
+        process.exit(1);
+      }
+
+      // Update config with the environment-specific env file for MongoStorage
+      config.storageEnvFile = envFile;
     }
 
     const lastSavedVersion = await getLastSavedVersion(config, environment);

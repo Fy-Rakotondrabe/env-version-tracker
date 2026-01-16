@@ -1,7 +1,14 @@
 export interface Config {
   storage: "local" | "remote";
   storagePath?: string | null;
-  // For remote storage, use envFile instead of direct values
+  // For remote storage, use envFiles to map each environment to its .env file
+  storageEnvFiles?: {
+    dev?: string | null;
+    staging?: string | null;
+    preprod?: string | null;
+    production?: string | null;
+  };
+  // Legacy: single env file (deprecated, kept for backward compatibility)
   storageEnvFile?: string | null;
   // Legacy fields (kept for backward compatibility, but deprecated)
   storageUrl?: string | null;

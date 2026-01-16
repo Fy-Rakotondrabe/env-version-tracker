@@ -22,6 +22,10 @@ evt config local --storage-path ./versions.json
 
 **Using MongoDB:**
 
+You can configure a different `.env` file for each environment, or use the same file for all environments.
+
+**Option 1: Same .env file for all environments**
+
 1. Create a `.env` file in your project with the following variables:
 
 ```bash
@@ -31,10 +35,49 @@ DATABASE_NAME=version-tracker
 COLLECTION_NAME=versions
 ```
 
-2. Configure the tool to use the `.env` file:
+2. Configure the tool to use the `.env` file for all environments:
 
 ```bash
 evt config remote --storage-env-file .env
+```
+
+**Option 2: Different .env file per environment (recommended)**
+
+1. Create separate `.env` files for each environment:
+
+```bash
+# .env.dev
+DATABASE_URL=mongodb://dev-server:27017
+DATABASE_NAME=version-tracker-dev
+COLLECTION_NAME=versions
+
+# .env.staging
+DATABASE_URL=mongodb://staging-server:27017
+DATABASE_NAME=version-tracker-staging
+COLLECTION_NAME=versions
+
+# .env.production
+DATABASE_URL=mongodb://prod-server:27017
+DATABASE_NAME=version-tracker-prod
+COLLECTION_NAME=versions
+```
+
+2. Configure each environment separately:
+
+```bash
+evt config remote \
+  --env-file-dev .env.dev \
+  --env-file-staging .env.staging \
+  --env-file-preprod .env.preprod \
+  --env-file-production .env.production
+```
+
+Or configure them one by one:
+
+```bash
+evt config remote --env-file-dev .env.dev
+evt config remote --env-file-staging .env.staging
+evt config remote --env-file-production .env.production
 ```
 
 **Supported environment variable names (generic, provider-agnostic):**
@@ -96,13 +139,22 @@ git ppush origin main
 **`config <storage> [options]`** - Set up where to store versions
 
 - `storage`: `local` or `remote`
-- Options depend on storage type (see examples above)
+- **For local storage:**
+  - `--storage-path <path>`: Path to JSON file
+- **For remote storage:**
+  - `--storage-env-file <path>`: Use same .env file for all environments
+  - `--env-file-dev <path>`: .env file for dev environment
+  - `--env-file-staging <path>`: .env file for staging environment
+  - `--env-file-preprod <path>`: .env file for preprod environment
+  - `--env-file-production <path>`: .env file for production environment
 
 **`push <version-tag> <environment> [options]`** - Record a deployment
 
 - `version-tag`: `major`, `minor`, `patch`, or exact version like `1.2.3`
 - `environment`: `dev`, `staging`, `preprod`, `production`
 - `--track-author`: Include git author email
+
+**Note:** For remote storage, the tool automatically loads the `.env` file configured for the specified environment. If no `.env` file is configured, you'll get an error with instructions to configure it.
 
 **`setup-hook`** - Enable auto-tracking by creating a `ppush` git alias
 
@@ -130,13 +182,15 @@ Your project will have:
 ```
 your-project/
 ├── .env-version-tracker/
-│   ├── config.json              # Your config (stores .env file path for remote)
+│   ├── config.json              # Your config (stores .env file paths per environment)
 │   └── git-push-wrapper.sh     # Git push wrapper script
-├── .env                         # MongoDB credentials (for remote storage, add to .gitignore!)
+├── .env.dev                     # Dev environment credentials (add to .gitignore!)
+├── .env.staging                 # Staging environment credentials (add to .gitignore!)
+├── .env.production              # Production environment credentials (add to .gitignore!)
 └── versions.json                # Version history (if local storage)
 ```
 
-Config is stored in `.env-version-tracker/config.json` per project. For remote storage, only the path to your `.env` file is stored, not the actual credentials.
+Config is stored in `.env-version-tracker/config.json` per project. For remote storage, only the paths to your `.env` files are stored (one per environment), not the actual credentials.
 
 **Debug logs:** If something goes wrong, check `/tmp/evt-debug.log` for detailed logs.
 

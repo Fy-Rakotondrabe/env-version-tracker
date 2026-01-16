@@ -14,6 +14,12 @@ function getConfigFile(): string {
 const DEFAULT_CONFIG: Config = {
   storage: "local",
   storagePath: null,
+  storageEnvFiles: {
+    dev: null,
+    staging: null,
+    preprod: null,
+    production: null,
+  },
   storageEnvFile: null,
   storageUrl: null,
   storageDatabase: null,

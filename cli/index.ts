@@ -29,7 +29,23 @@ program
   )
   .option(
     "--storage-env-file <storage-env-file>",
-    "Path to .env file containing MongoDB configuration (for remote)"
+    "Path to .env file (for remote, applies to all environments)"
+  )
+  .option(
+    "--env-file-dev <env-file-dev>",
+    "Path to .env file for dev environment (for remote)"
+  )
+  .option(
+    "--env-file-staging <env-file-staging>",
+    "Path to .env file for staging environment (for remote)"
+  )
+  .option(
+    "--env-file-preprod <env-file-preprod>",
+    "Path to .env file for preprod environment (for remote)"
+  )
+  .option(
+    "--env-file-production <env-file-production>",
+    "Path to .env file for production environment (for remote)"
   )
   // Legacy options (deprecated, kept for backward compatibility)
   .option(
@@ -44,33 +60,68 @@ program
     "--storage-collection <storage-collection>",
     "The collection to the tracking storage (deprecated)"
   )
-  .action((storage: string, options: Partial<Config>) => {
+  .action((storage: string, options: any) => {
     const config = loadConfig();
     const storageType = storage as "local" | "remote";
 
     if (storageType === "remote") {
-      // For remote storage, prefer env file
+      // Initialize storageEnvFiles if not present
+      const envFiles = config.storageEnvFiles || {
+        dev: null,
+        staging: null,
+        preprod: null,
+        production: null,
+      };
+
+      // Update specific environment files if provided
+      if (options.envFileDev) envFiles.dev = options.envFileDev;
+      if (options.envFileStaging) envFiles.staging = options.envFileStaging;
+      if (options.envFilePreprod) envFiles.preprod = options.envFilePreprod;
+      if (options.envFileProduction)
+        envFiles.production = options.envFileProduction;
+
+      // If --storage-env-file is provided, apply to all environments
       if (options.storageEnvFile) {
+        envFiles.dev = options.storageEnvFile;
+        envFiles.staging = options.storageEnvFile;
+        envFiles.preprod = options.storageEnvFile;
+        envFiles.production = options.storageEnvFile;
+      }
+
+      // Check if at least one env file is configured
+      const hasEnvFiles =
+        envFiles.dev ||
+        envFiles.staging ||
+        envFiles.preprod ||
+        envFiles.production;
+
+      if (hasEnvFiles || options.storageEnvFile) {
         const newConfig: Config = {
           ...config,
           storage: storageType,
-          storageEnvFile: options.storageEnvFile,
-          // Clear legacy values when using env file
+          storageEnvFiles: envFiles,
+          // Clear legacy values when using env files
+          storageEnvFile: null,
           storageUrl: null,
           storageDatabase: null,
           storageCollection: null,
         };
         saveConfig(newConfig);
         console.log("✅ Configuration saved successfully!");
-        console.log(`\n📄 Using environment file: ${options.storageEnvFile}`);
+        console.log("\n📄 Environment files configured:");
+        if (envFiles.dev) console.log(`   dev: ${envFiles.dev}`);
+        if (envFiles.staging) console.log(`   staging: ${envFiles.staging}`);
+        if (envFiles.preprod) console.log(`   preprod: ${envFiles.preprod}`);
+        if (envFiles.production)
+          console.log(`   production: ${envFiles.production}`);
         console.log(
-          "\n⚠️  Make sure your .env file contains the required variables:"
+          "\n⚠️  Make sure your .env files contain the required variables:"
         );
         printEnvFileInstructions();
       } else if (options.storageUrl) {
         // Legacy support: direct values
         console.warn(
-          "\n⚠️  Warning: Direct configuration is deprecated. Please use --storage-env-file instead."
+          "\n⚠️  Warning: Direct configuration is deprecated. Please use --env-file-* options instead."
         );
         const newConfig: Config = {
           ...config,
@@ -84,10 +135,15 @@ program
         console.log("Configuration saved successfully (legacy mode)");
       } else {
         console.error(
-          "\n❌ Error: For remote storage, you must provide --storage-env-file"
+          "\n❌ Error: For remote storage, you must provide environment file(s)"
         );
-        console.log("\nExample:");
+        console.log("\nExamples:");
+        console.log("  # Configure for all environments:");
         console.log("  evt config remote --storage-env-file .env");
+        console.log("\n  # Configure per environment:");
+        console.log(
+          "  evt config remote --env-file-dev .env.dev --env-file-staging .env.staging"
+        );
         console.log("\nRequired environment variables:");
         printEnvFileInstructions();
         process.exit(1);
@@ -99,6 +155,12 @@ program
         storage: storageType,
         storagePath: options.storagePath || null,
         // Clear remote config when switching to local
+        storageEnvFiles: {
+          dev: null,
+          staging: null,
+          preprod: null,
+          production: null,
+        },
         storageEnvFile: null,
         storageUrl: null,
         storageDatabase: null,
