@@ -45,8 +45,8 @@ env-version-tracker push minor staging
 env-version-tracker push major production
 ```
 
-**With hook installed:**
-Just do `git push` normally. The hook will prompt you for version tag and environment.
+**With alias installed:**
+Just do `git push` normally. After a successful push, you'll be prompted for version tag and environment.
 
 ## Commands
 
@@ -74,11 +74,12 @@ Just do `git push` normally. The hook will prompt you for version tag and enviro
 
 ## What gets created
 
-After running `setup-hook`, your project will have:
+After running `setup-hook`, a git alias 'push' is configured in your local git config.
+
+Your project will have:
 
 ```
 your-project/
-├── .husky/pre-push          # Git hook
 ├── .env-version-tracker/
 │   └── config.json          # Your config
 └── versions.json            # Version history (if local storage)
@@ -101,11 +102,11 @@ env-version-tracker push patch dev
 env-version-tracker push minor staging --track-author true
 ```
 
-**With hook (automatic):**
+**With alias (automatic):**
 
 ```bash
 git push
-# Prompts appear automatically:
+# After successful push, prompts appear automatically:
 # ? What version tag? (Use arrow keys)
 # ? Which environment?
 # ? Track the author? (y/N)
@@ -137,6 +138,12 @@ Versions are stored with:
 ```
 
 MongoDB uses the same structure.
+
+## TODO
+
+- [ ] On config, ask for env file instead of asking directly the remote storage path
+- [ ] Use husky or another git hook instead of gpush alias
+- [ ] Add another storage provider
 
 ## Requirements
 

@@ -1,16 +1,17 @@
-const path = require("path");
-const fs = require("fs");
+import * as path from "path";
+import * as fs from "fs";
+import { Config } from "./types";
 
-function getConfigDir() {
+function getConfigDir(): string {
   const projectRoot = process.cwd();
   return path.join(projectRoot, ".env-version-tracker");
 }
 
-function getConfigFile() {
+function getConfigFile(): string {
   return path.join(getConfigDir(), "config.json");
 }
 
-const DEFAULT_CONFIG = {
+const DEFAULT_CONFIG: Config = {
   storage: "local",
   storagePath: null,
   storageUrl: null,
@@ -18,7 +19,7 @@ const DEFAULT_CONFIG = {
   storageCollection: null,
 };
 
-function loadConfig() {
+export function loadConfig(): Config {
   const configFile = getConfigFile();
   
   if (!fs.existsSync(configFile)) {
@@ -31,12 +32,13 @@ function loadConfig() {
       ...JSON.parse(fs.readFileSync(configFile, "utf-8")),
     };
   } catch (error) {
-    console.error("Error loading config:", error.message);
+    const err = error as Error;
+    console.error("Error loading config:", err.message);
     return DEFAULT_CONFIG;
   }
 }
 
-function saveConfig(config) {
+export function saveConfig(config: Config): void {
   try {
     const configDir = getConfigDir();
     const configFile = getConfigFile();
@@ -44,8 +46,7 @@ function saveConfig(config) {
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
   } catch (error) {
-    throw new Error(`Failed to save config: ${error.message}`);
+    const err = error as Error;
+    throw new Error(`Failed to save config: ${err.message}`);
   }
 }
-
-module.exports = { loadConfig, saveConfig };

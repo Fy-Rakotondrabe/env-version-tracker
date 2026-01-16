@@ -1,15 +1,40 @@
+# Source files
+cli/**/*.ts
+!cli/**/*.d.ts
+
+# TypeScript config
+tsconfig.json
+tsconfig.*.json
+
+# Development files
 node_modules/
 .git/
-.husky/
-.env-version-tracker/
-*.log
-.DS_Store
+.gitignore
 .env
 .env.local
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json
-.gitignore
-.npmignore
-README.md
+*.log
+*.swp
+*.swo
+*~
+
+# IDE files
+.vscode/
+.idea/
+*.iml
+
+# Build artifacts (will be included via files in package.json)
+# dist/ is included in package.json files array
+
+# Test files
+**/*.test.ts
+**/*.spec.ts
+**/__tests__/
+**/test/
+
+# Documentation (optional, but README.md and LICENSE are included)
+# docs/
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml

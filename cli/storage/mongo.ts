@@ -1,15 +1,17 @@
-const { MongoClient } = require("mongodb");
+import { MongoClient, Db } from "mongodb";
+import { Config, VersionPayload, Storage } from "../types";
 
-let clientInstance = null;
-let dbInstance = null;
-let connectionPromise = null;
-let connectionConfig = null;
+let clientInstance: MongoClient | null = null;
+let dbInstance: Db | null = null;
+let connectionPromise: Promise<void> | null = null;
+let connectionConfig: string | null = null;
 
-async function closeConnection() {
+async function closeConnection(): Promise<void> {
   if (clientInstance) {
     try {
       await clientInstance.close();
     } catch (error) {
+      // Ignore errors on close
     } finally {
       clientInstance = null;
       dbInstance = null;
@@ -33,12 +35,14 @@ process.on("exit", async () => {
   await closeConnection();
 });
 
-class MongoStorage {
-  constructor(config) {
+export class MongoStorage implements Storage {
+  private config: Config;
+
+  constructor(config: Config) {
     this.config = config;
   }
 
-  async init() {
+  async init(): Promise<void> {
     if (connectionPromise) {
       await connectionPromise;
       return;
@@ -52,15 +56,18 @@ class MongoStorage {
     await connectionPromise;
   }
 
-  _isConnected() {
-    return (
-      clientInstance &&
-      clientInstance.topology &&
-      clientInstance.topology.isConnected()
-    );
+  private _isConnected(): boolean {
+    try {
+      return (
+        clientInstance !== null &&
+        dbInstance !== null
+      );
+    } catch {
+      return false;
+    }
   }
 
-  async _connect() {
+  private async _connect(): Promise<void> {
     try {
       if (!this.config.storageUrl) {
         throw new Error("MongoDB storage URL is not configured");
@@ -73,7 +80,9 @@ class MongoStorage {
       if (clientInstance) {
         try {
           await clientInstance.close();
-        } catch (error) {}
+        } catch (error) {
+          // Ignore errors on close
+        }
       }
 
       const client = new MongoClient(this.config.storageUrl, {
@@ -86,36 +95,38 @@ class MongoStorage {
       await client.connect();
       clientInstance = client;
       connectionConfig = this.config.storageUrl;
-      dbInstance = client.db(this.config.storageDatabase);
+      dbInstance = client.db(this.config.storageDatabase || undefined);
     } catch (error) {
       connectionPromise = null;
       clientInstance = null;
       dbInstance = null;
       connectionConfig = null;
-      throw new Error(`Failed to connect to MongoDB: ${error.message}`);
+      const err = error as Error;
+      throw new Error(`Failed to connect to MongoDB: ${err.message}`);
     }
   }
 
-  async _ensureConnection() {
+  private async _ensureConnection(): Promise<void> {
     if (!this._isConnected()) {
       connectionPromise = null;
       await this.init();
     }
   }
 
-  get db() {
+  get db(): Db {
     if (!dbInstance) {
       throw new Error("Database not initialized. Call init() first.");
     }
     return dbInstance;
   }
 
-  async close() {
+  async close(): Promise<void> {
     if (clientInstance && this._isConnected()) {
       try {
         await clientInstance.close();
       } catch (error) {
-        console.error("Error closing MongoDB connection:", error.message);
+        const err = error as Error;
+        console.error("Error closing MongoDB connection:", err.message);
       } finally {
         clientInstance = null;
         dbInstance = null;
@@ -125,17 +136,20 @@ class MongoStorage {
     }
   }
 
-  async saveVersion(payload) {
+  async saveVersion(payload: VersionPayload): Promise<void> {
     await this._ensureConnection();
-    const collection = this.db.collection(this.config.storageCollection);
+    const collection = this.db.collection(this.config.storageCollection || "versions");
     await collection.insertOne(payload);
   }
 
-  async getVersionByEnvironment(environment) {
+  async getVersionByEnvironment(environment: string): Promise<VersionPayload | null> {
     await this._ensureConnection();
-    const collection = this.db.collection(this.config.storageCollection);
-    return await collection.findOne({ environment });
+    const collection = this.db.collection<VersionPayload>(this.config.storageCollection || "versions");
+    const result = await collection
+      .find({ environment })
+      .sort({ createdAt: -1 })
+      .limit(1)
+      .next();
+    return result as VersionPayload | null;
   }
 }
-
-module.exports = { MongoStorage };

@@ -1,19 +1,26 @@
-const { execSync } = require("child_process");
-const { loadConfig } = require("./config");
-const { LocaleStorage } = require("./storage/locale");
-const { MongoStorage } = require("./storage/mongo");
+import { execSync } from "child_process";
+import * as crypto from "crypto";
+import { loadConfig } from "./config";
+import { LocaleStorage } from "./storage/locale";
+import { MongoStorage } from "./storage/mongo";
+import { Config, VersionPayload, PushOptions, Storage } from "./types";
 
 const DEFAULT_VERSION = "1.0.0";
 
-function exec(command) {
+function exec(command: string): string {
   try {
     return execSync(command, { encoding: "utf-8", stdio: "pipe" }).trim();
   } catch (error) {
-    throw new Error(`Command failed: ${command} - ${error.message}`);
+    const err = error as Error;
+    throw new Error(`Command failed: ${command} - ${err.message}`);
   }
 }
 
-function incrementVersion(currentVersion, versionTag) {
+function incrementVersion(
+  currentVersion: string,
+  versionTag: string,
+  isFirstVersion: boolean = false
+): string {
   const parts = currentVersion.split(".").map(Number);
   if (parts.length !== 3 || parts.some(isNaN)) {
     throw new Error(`Invalid version format: ${currentVersion}`);
@@ -21,6 +28,18 @@ function incrementVersion(currentVersion, versionTag) {
 
   const [major, minor, patch] = parts;
   const tag = versionTag.toLowerCase();
+
+  if (isFirstVersion) {
+    if (tag === "major") {
+      return "1.0.0";
+    } else if (tag === "minor") {
+      return "0.1.0";
+    } else if (tag === "patch") {
+      return "0.0.1";
+    } else {
+      return versionTag;
+    }
+  }
 
   if (tag === "major") {
     return `${major + 1}.0.0`;
@@ -33,8 +52,11 @@ function incrementVersion(currentVersion, versionTag) {
   }
 }
 
-async function getLastSavedVersion(config, environment) {
-  let storage = null;
+async function getLastSavedVersion(
+  config: Config,
+  environment: string
+): Promise<VersionPayload | null> {
+  let storage: Storage | null = null;
   try {
     if (config.storage === "local") {
       storage = new LocaleStorage(config);
@@ -43,26 +65,35 @@ async function getLastSavedVersion(config, environment) {
 
     if (config.storage === "remote") {
       storage = new MongoStorage(config);
-      await storage.init();
+      if (storage.init) {
+        await storage.init();
+      }
       return await storage.getVersionByEnvironment(environment);
     }
 
     return null;
   } catch (error) {
-    throw new Error(`Failed to get last saved version: ${error.message}`);
+    const err = error as Error;
+    throw new Error(`Failed to get last saved version: ${err.message}`);
   } finally {
     if (storage && storage.close && typeof storage.close === "function") {
       try {
         await storage.close();
       } catch (closeError) {
-        console.error("Warning: Error closing storage:", closeError.message);
+        const err = closeError as Error;
+        console.error("Warning: Error closing storage:", err.message);
       }
     }
   }
 }
 
-async function push(versionTag, environment, options = {}, skipGitPush = false) {
-  let storage = null;
+export async function push(
+  versionTag: string,
+  environment: string,
+  options: PushOptions = {},
+  skipGitPush: boolean = false
+): Promise<void> {
+  let storage: Storage | null = null;
   try {
     if (!versionTag) {
       throw new Error("Version tag is required");
@@ -78,7 +109,7 @@ async function push(versionTag, environment, options = {}, skipGitPush = false) 
       try {
         const remoteBranch = `origin/${currentBranch}`;
         const localCommit = exec(`git rev-parse HEAD`);
-        let remoteCommit = null;
+        let remoteCommit: string | null = null;
 
         try {
           remoteCommit = exec(`git rev-parse ${remoteBranch}`);
@@ -92,12 +123,13 @@ async function push(versionTag, environment, options = {}, skipGitPush = false) 
           );
         }
 
-        exec(`git push origin ${currentBranch}`);
+        exec(`git push origin ${currentBranch} -u`);
       } catch (error) {
-        if (error.message.includes("No changes to push")) {
-          throw error;
+        const err = error as Error;
+        if (err.message.includes("No changes to push")) {
+          throw err;
         }
-        exec(`git push origin ${currentBranch}`);
+        exec(`git push origin ${currentBranch} -u`);
       }
     }
 
@@ -108,23 +140,25 @@ async function push(versionTag, environment, options = {}, skipGitPush = false) 
     }
 
     const lastSavedVersion = await getLastSavedVersion(config, environment);
+    const isFirstVersion = !lastSavedVersion;
     const currentVersion = lastSavedVersion
       ? lastSavedVersion.version
       : DEFAULT_VERSION;
 
-    let author = null;
+    let author: string | null = null;
     const trackAuthor =
       options.trackAuthor === "true" || options.trackAuthor === true;
     if (trackAuthor) {
       try {
         author = exec("git config user.email");
       } catch (error) {
-        console.warn("Warning: Could not get git email:", error.message);
+        const err = error as Error;
+        console.warn("Warning: Could not get git email:", err.message);
       }
     }
 
-    let commitHash = null;
-    let commitMessage = null;
+    let commitHash: string | null = null;
+    let commitMessage: string | null = null;
     try {
       const lastCommit = exec('git log -1 --pretty=format:"%h|%s"');
       const parts = lastCommit.split("|");
@@ -143,20 +177,27 @@ async function push(versionTag, environment, options = {}, skipGitPush = false) 
             commitHash = originalParts[0] || commitHash;
             commitMessage = originalParts.slice(1).join("|") || commitMessage;
           } catch (error) {
+            const err = error as Error;
             console.warn(
               "Warning: Could not get original commit info:",
-              error.message
+              err.message
             );
           }
         }
       }
     } catch (error) {
-      console.warn("Warning: Could not get git commit info:", error.message);
+      const err = error as Error;
+      console.warn("Warning: Could not get git commit info:", err.message);
     }
 
-    const version = incrementVersion(currentVersion, versionTag);
+    const version = incrementVersion(
+      currentVersion,
+      versionTag,
+      isFirstVersion
+    );
 
-    const payload = {
+    const payload: VersionPayload = {
+      id: crypto.randomUUID(),
       version,
       environment,
       commitHash,
@@ -170,7 +211,9 @@ async function push(versionTag, environment, options = {}, skipGitPush = false) 
       await storage.saveVersion(payload);
     } else if (config.storage === "remote") {
       storage = new MongoStorage(config);
-      await storage.init();
+      if (storage.init) {
+        await storage.init();
+      }
       await storage.saveVersion(payload);
     } else {
       throw new Error(`Unknown storage type: ${config.storage}`);
@@ -178,17 +221,17 @@ async function push(versionTag, environment, options = {}, skipGitPush = false) 
 
     console.log(`Version ${version} pushed to ${environment}`);
   } catch (error) {
-    console.error("Error:", error.message);
+    const err = error as Error;
+    console.error("Error:", err.message);
     process.exit(1);
   } finally {
     if (storage && storage.close && typeof storage.close === "function") {
       try {
         await storage.close();
       } catch (error) {
-        console.error("Warning: Error closing storage:", error.message);
+        const err = error as Error;
+        console.error("Warning: Error closing storage:", err.message);
       }
     }
   }
 }
-
-module.exports = { push };

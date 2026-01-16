@@ -1,6 +1,7 @@
-const inquirer = require("inquirer");
+import inquirer from "inquirer";
+import { PushArgs } from "./types";
 
-async function promptForPushArgs() {
+export async function promptForPushArgs(): Promise<PushArgs> {
   const answers = await inquirer.prompt([
     {
       type: "list",
@@ -29,5 +30,3 @@ async function promptForPushArgs() {
     trackAuthor: answers.trackAuthor,
   };
 }
-
-module.exports = { promptForPushArgs };
