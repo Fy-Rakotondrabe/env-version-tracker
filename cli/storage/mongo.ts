@@ -1,5 +1,6 @@
 import { MongoClient, Db } from "mongodb";
 import { Config, VersionPayload, Storage } from "../types";
+import { loadMongoConfig } from "../env-loader";
 
 let clientInstance: MongoClient | null = null;
 let dbInstance: Db | null = null;
@@ -37,6 +38,7 @@ process.on("exit", async () => {
 
 export class MongoStorage implements Storage {
   private config: Config;
+  private mongoConfig?: { url: string; database: string; collection: string };
 
   constructor(config: Config) {
     this.config = config;
@@ -69,11 +71,25 @@ export class MongoStorage implements Storage {
 
   private async _connect(): Promise<void> {
     try {
-      if (!this.config.storageUrl) {
-        throw new Error("MongoDB storage URL is not configured");
+      // Load config from .env file if available, otherwise use legacy config
+      let mongoConfig;
+      if (this.config.storageEnvFile) {
+        mongoConfig = loadMongoConfig(this.config.storageEnvFile);
+      } else if (this.config.storageUrl) {
+        // Legacy support: use direct config values
+        mongoConfig = {
+          url: this.config.storageUrl,
+          database: this.config.storageDatabase || "version-tracker",
+          collection: this.config.storageCollection || "versions",
+        };
+      } else {
+        throw new Error(
+          "MongoDB configuration not found. Please configure using 'evt config remote --storage-env-file <path>'"
+        );
       }
 
-      if (this._isConnected() && connectionConfig === this.config.storageUrl) {
+      const configKey = `${mongoConfig.url}:${mongoConfig.database}`;
+      if (this._isConnected() && connectionConfig === configKey) {
         return;
       }
 
@@ -85,7 +101,7 @@ export class MongoStorage implements Storage {
         }
       }
 
-      const client = new MongoClient(this.config.storageUrl, {
+      const client = new MongoClient(mongoConfig.url, {
         maxPoolSize: 10,
         minPoolSize: 2,
         serverSelectionTimeoutMS: 5000,
@@ -94,8 +110,9 @@ export class MongoStorage implements Storage {
 
       await client.connect();
       clientInstance = client;
-      connectionConfig = this.config.storageUrl;
-      dbInstance = client.db(this.config.storageDatabase || undefined);
+      connectionConfig = configKey;
+      dbInstance = client.db(mongoConfig.database);
+      this.mongoConfig = mongoConfig; // Store for later use
     } catch (error) {
       connectionPromise = null;
       clientInstance = null;
@@ -138,13 +155,21 @@ export class MongoStorage implements Storage {
 
   async saveVersion(payload: VersionPayload): Promise<void> {
     await this._ensureConnection();
-    const collection = this.db.collection(this.config.storageCollection || "versions");
+    const collectionName =
+      this.mongoConfig?.collection ||
+      this.config.storageCollection ||
+      "versions";
+    const collection = this.db.collection(collectionName);
     await collection.insertOne(payload);
   }
 
   async getVersionByEnvironment(environment: string): Promise<VersionPayload | null> {
     await this._ensureConnection();
-    const collection = this.db.collection<VersionPayload>(this.config.storageCollection || "versions");
+    const collectionName =
+      this.mongoConfig?.collection ||
+      this.config.storageCollection ||
+      "versions";
+    const collection = this.db.collection<VersionPayload>(collectionName);
     const result = await collection
       .find({ environment })
       .sort({ createdAt: -1 })

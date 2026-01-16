@@ -1,9 +1,18 @@
 export interface Config {
   storage: "local" | "remote";
   storagePath?: string | null;
+  // For remote storage, use envFile instead of direct values
+  storageEnvFile?: string | null;
+  // Legacy fields (kept for backward compatibility, but deprecated)
   storageUrl?: string | null;
   storageDatabase?: string | null;
   storageCollection?: string | null;
+}
+
+export interface MongoConfig {
+  url: string;
+  database: string;
+  collection: string;
 }
 
 export interface VersionPayload {

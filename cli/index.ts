@@ -8,6 +8,7 @@ import * as fs from "fs";
 import * as path from "path";
 import { promptForPushArgs } from "./prompts.js";
 import { Config } from "./types.js";
+import { printEnvFileInstructions } from "./env-loader.js";
 
 const program = new Command();
 
@@ -22,26 +23,95 @@ program
   .command("config")
   .description("Configure the tool")
   .argument("<storage>", "The tracking storage to use [local, remote]")
-  .option("--storage-path <storage-path>", "The path to the tracking storage")
-  .option("--storage-url <storage-url>", "The URL to the tracking storage")
+  .option(
+    "--storage-path <storage-path>",
+    "The path to the tracking storage (for local)"
+  )
+  .option(
+    "--storage-env-file <storage-env-file>",
+    "Path to .env file containing MongoDB configuration (for remote)"
+  )
+  // Legacy options (deprecated, kept for backward compatibility)
+  .option(
+    "--storage-url <storage-url>",
+    "The URL to the tracking storage (deprecated)"
+  )
   .option(
     "--storage-database <storage-database>",
-    "The database to the tracking storage"
+    "The database to the tracking storage (deprecated)"
   )
   .option(
     "--storage-collection <storage-collection>",
-    "The collection to the tracking storage"
+    "The collection to the tracking storage (deprecated)"
   )
   .action((storage: string, options: Partial<Config>) => {
     const config = loadConfig();
+    const storageType = storage as "local" | "remote";
 
-    const newConfig: Config = {
-      ...config,
-      storage: storage as "local" | "remote",
-      ...options,
-    };
-    saveConfig(newConfig);
-    console.log("Configuration saved successfully");
+    if (storageType === "remote") {
+      // For remote storage, prefer env file
+      if (options.storageEnvFile) {
+        const newConfig: Config = {
+          ...config,
+          storage: storageType,
+          storageEnvFile: options.storageEnvFile,
+          // Clear legacy values when using env file
+          storageUrl: null,
+          storageDatabase: null,
+          storageCollection: null,
+        };
+        saveConfig(newConfig);
+        console.log("✅ Configuration saved successfully!");
+        console.log(`\n📄 Using environment file: ${options.storageEnvFile}`);
+        console.log(
+          "\n⚠️  Make sure your .env file contains the required variables:"
+        );
+        printEnvFileInstructions();
+      } else if (options.storageUrl) {
+        // Legacy support: direct values
+        console.warn(
+          "\n⚠️  Warning: Direct configuration is deprecated. Please use --storage-env-file instead."
+        );
+        const newConfig: Config = {
+          ...config,
+          storage: storageType,
+          storageUrl: options.storageUrl,
+          storageDatabase: options.storageDatabase || null,
+          storageCollection: options.storageCollection || null,
+          storageEnvFile: null,
+        };
+        saveConfig(newConfig);
+        console.log("Configuration saved successfully (legacy mode)");
+      } else {
+        console.error(
+          "\n❌ Error: For remote storage, you must provide --storage-env-file"
+        );
+        console.log("\nExample:");
+        console.log("  evt config remote --storage-env-file .env");
+        console.log("\nRequired environment variables:");
+        printEnvFileInstructions();
+        process.exit(1);
+      }
+    } else {
+      // Local storage
+      const newConfig: Config = {
+        ...config,
+        storage: storageType,
+        storagePath: options.storagePath || null,
+        // Clear remote config when switching to local
+        storageEnvFile: null,
+        storageUrl: null,
+        storageDatabase: null,
+        storageCollection: null,
+      };
+      saveConfig(newConfig);
+      console.log("✅ Configuration saved successfully!");
+      if (!options.storagePath) {
+        console.warn(
+          "\n⚠️  Warning: No storage path provided. Please set it with --storage-path"
+        );
+      }
+    }
   });
 
 program

@@ -14,6 +14,7 @@ function getConfigFile(): string {
 const DEFAULT_CONFIG: Config = {
   storage: "local",
   storagePath: null,
+  storageEnvFile: null,
   storageUrl: null,
   storageDatabase: null,
   storageCollection: null,
@@ -21,7 +22,7 @@ const DEFAULT_CONFIG: Config = {
 
 export function loadConfig(): Config {
   const configFile = getConfigFile();
-  
+
   if (!fs.existsSync(configFile)) {
     return DEFAULT_CONFIG;
   }
@@ -42,7 +43,7 @@ export function saveConfig(config: Config): void {
   try {
     const configDir = getConfigDir();
     const configFile = getConfigFile();
-    
+
     fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
   } catch (error) {

@@ -22,12 +22,37 @@ evt config local --storage-path ./versions.json
 
 **Using MongoDB:**
 
+1. Create a `.env` file in your project with the following variables:
+
 ```bash
-evt config remote \
-  --storage-url "mongodb://localhost:27017" \
-  --storage-database "version-tracker" \
-  --storage-collection "versions"
+# .env file
+DATABASE_URL=mongodb://localhost:27017
+DATABASE_NAME=version-tracker
+COLLECTION_NAME=versions
 ```
+
+2. Configure the tool to use the `.env` file:
+
+```bash
+evt config remote --storage-env-file .env
+```
+
+**Supported environment variable names (generic, provider-agnostic):**
+
+- **URL**: `DATABASE_URL` (recommended), `DATABASE_URI`, `DB_URL`, or `DB_URI`
+- **Database**: `DATABASE_NAME` (recommended), `DATABASE`, `DB_NAME`, or `DB`
+- **Collection**: `COLLECTION_NAME` (recommended), `COLLECTION`, `TABLE_NAME`, or `TABLE`
+
+**Legacy MongoDB-specific names** (still supported for backward compatibility):
+
+- `MONGODB_URL`, `MONGO_URL`, `MONGODB_URI`, `MONGO_URI`
+- `MONGODB_DATABASE`, `MONGO_DATABASE`, `MONGODB_DB`, `MONGO_DB`
+- `MONGODB_COLLECTION`, `MONGO_COLLECTION`, `MONGODB_COL`, `MONGO_COL`
+
+**Note:**
+
+- The `.env` file path can be absolute or relative to your project root.
+- **Security:** Make sure to add `.env` to your `.gitignore` file to avoid committing sensitive credentials.
 
 ### 2. Optional: Auto-track after git push
 
@@ -105,12 +130,13 @@ Your project will have:
 ```
 your-project/
 ├── .env-version-tracker/
-│   ├── config.json              # Your config
+│   ├── config.json              # Your config (stores .env file path for remote)
 │   └── git-push-wrapper.sh     # Git push wrapper script
+├── .env                         # MongoDB credentials (for remote storage, add to .gitignore!)
 └── versions.json                # Version history (if local storage)
 ```
 
-Config is stored in `.env-version-tracker/config.json` per project.
+Config is stored in `.env-version-tracker/config.json` per project. For remote storage, only the path to your `.env` file is stored, not the actual credentials.
 
 **Debug logs:** If something goes wrong, check `/tmp/evt-debug.log` for detailed logs.
 
@@ -188,7 +214,7 @@ git config --local --unset alias.push
 
 ## TODO
 
-- [ ] On config, ask for env file instead of asking directly the remote storage path
+- [x] On config, ask for env file instead of asking directly the remote storage path
 - [ ] Use husky or another git hook instead of ppush alias
 - [ ] Add another storage provider
 
