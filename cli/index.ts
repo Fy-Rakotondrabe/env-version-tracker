@@ -12,7 +12,7 @@ import { Config } from "./types.js";
 const program = new Command();
 
 program
-  .name("env-version-tracker")
+  .name("evt")
   .description(
     "A CLI tool to track deployments version across multiple environments"
   )
@@ -128,7 +128,7 @@ program
     const scriptContent = `#!/usr/bin/env bash
 set -e
 
-LOG_FILE="/tmp/env-version-tracker-debug.log"
+LOG_FILE="/tmp/evt-debug.log"
 echo "=== Git Push Wrapper Started at $(date) ===" >> "$LOG_FILE"
 echo "Command: git push $@" >> "$LOG_FILE"
 echo "PWD: $(pwd)" >> "$LOG_FILE"
@@ -146,17 +146,17 @@ if [ $PUSH_EXIT_CODE -eq 0 ]; then
   echo "Project dir: $PROJECT_DIR" >> "$LOG_FILE"
   
   # Chercher le CLI
-  if [ -f "$PROJECT_DIR/node_modules/.bin/env-version-tracker" ]; then
+  if [ -f "$PROJECT_DIR/node_modules/.bin/evt" ]; then
     echo "Using local CLI" >> "$LOG_FILE"
-    "$PROJECT_DIR/node_modules/.bin/env-version-tracker" post-push-handler
+    "$PROJECT_DIR/node_modules/.bin/evt" post-push-handler
   elif command -v npx >/dev/null 2>&1; then
     echo "Using npx" >> "$LOG_FILE"
-    npx env-version-tracker post-push-handler
-  elif command -v env-version-tracker >/dev/null 2>&1; then
+    npx evt post-push-handler
+  elif command -v evt >/dev/null 2>&1; then
     echo "Using global CLI" >> "$LOG_FILE"
-    env-version-tracker post-push-handler
+    evt post-push-handler
   else
-    echo "⚠️  env-version-tracker not found" | tee -a "$LOG_FILE"
+    echo "⚠️  evt not found" | tee -a "$LOG_FILE"
   fi
 else
   echo "❌ Push failed" >> "$LOG_FILE"
@@ -186,7 +186,7 @@ exit $PUSH_EXIT_CODE
       console.log(`   Example: git ${aliasName} origin main`);
       console.log(`\n💡 Or set 'push' as alias (may conflict):`);
       console.log(`   git config --local alias.push '!${absoluteScriptPath}'`);
-      console.log(`\n🔍 Debug logs: /tmp/env-version-tracker-debug.log`);
+      console.log(`\n🔍 Debug logs: /tmp/evt-debug.log`);
 
       // Vérifier l'alias
       const verify = execSync(`git config --local alias.${aliasName}`, {

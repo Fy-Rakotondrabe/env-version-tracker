@@ -8,6 +8,8 @@ CLI tool to track which version is deployed in each environment. Works with loca
 npm install --save-dev env-version-tracker
 ```
 
+After installation, use the `evt` command (short for **E**nv **V**ersion **T**racker).
+
 ## Setup
 
 ### 1. Configure where to store versions
@@ -15,13 +17,13 @@ npm install --save-dev env-version-tracker
 **Using a JSON file:**
 
 ```bash
-env-version-tracker config local --storage-path ./versions.json
+evt config local --storage-path ./versions.json
 ```
 
 **Using MongoDB:**
 
 ```bash
-env-version-tracker config remote \
+evt config remote \
   --storage-url "mongodb://localhost:27017" \
   --storage-database "version-tracker" \
   --storage-collection "versions"
@@ -32,7 +34,7 @@ env-version-tracker config remote \
 If you want the tool to ask for version info automatically after each git push:
 
 ```bash
-env-version-tracker setup-hook
+evt setup-hook
 ```
 
 This creates a `gpush` alias that you can use instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
@@ -40,7 +42,7 @@ This creates a `gpush` alias that you can use instead of `git push`. After a suc
 **To override `git push` directly (may cause conflicts):**
 
 ```bash
-env-version-tracker setup-push-alias
+evt setup-push-alias
 ```
 
 ### 3. Track a deployment
@@ -48,9 +50,9 @@ env-version-tracker setup-push-alias
 **Manual:**
 
 ```bash
-env-version-tracker push patch dev
-env-version-tracker push minor staging
-env-version-tracker push major production
+evt push patch dev
+evt push minor staging
+evt push major production
 ```
 
 **With alias installed:**
@@ -110,21 +112,21 @@ your-project/
 
 Config is stored in `.env-version-tracker/config.json` per project.
 
-**Debug logs:** If something goes wrong, check `/tmp/env-version-tracker-debug.log` for detailed logs.
+**Debug logs:** If something goes wrong, check `/tmp/evt-debug.log` for detailed logs.
 
 ## Examples
 
 **Basic usage:**
 
 ```bash
-env-version-tracker push patch dev
+evt push patch dev
 # Version 1.0.1 pushed to dev
 ```
 
 **With author tracking:**
 
 ```bash
-env-version-tracker push minor staging --track-author true
+evt push minor staging --track-author true
 ```
 
 **With alias (automatic):**
@@ -173,12 +175,12 @@ MongoDB uses the same structure.
 
 - Check if the alias exists: `git config --local --get alias.gpush`
 - Verify the script exists: `ls -la .env-version-tracker/git-push-wrapper.sh`
-- Check debug logs: `cat /tmp/env-version-tracker-debug.log`
+- Check debug logs: `cat /tmp/evt-debug.log`
 
 **Want to remove the alias?**
 
 ```bash
-env-version-tracker remove-hook
+evt remove-hook
 # Or manually:
 git config --local --unset alias.gpush
 git config --local --unset alias.push

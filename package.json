@@ -5,7 +5,7 @@
   "main": "dist/cli/index.js",
   "types": "dist/cli/index.d.ts",
   "bin": {
-    "env-version-tracker": "./dist/cli/index.js"
+    "evt": "./dist/cli/index.js"
   },
   "scripts": {
     "build": "tsc",
