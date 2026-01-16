@@ -1,0 +1,15 @@
+node_modules/
+.git/
+.husky/
+.env-version-tracker/
+*.log
+.DS_Store
+.env
+.env.local
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+.gitignore
+.npmignore
+README.md

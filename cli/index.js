@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 const { Command } = require("commander");
 const program = new Command();
 const { loadConfig, saveConfig } = require("./config");
@@ -56,6 +58,30 @@ program
   });
 
 program
+  .command("post-push-handler")
+  .description("Internal command called by git hook after successful push")
+  .action(async () => {
+    const { promptForPushArgs } = require("./prompts");
+    try {
+      console.log("\nPush successful! Tracking version...\n");
+
+      const args = await promptForPushArgs();
+
+      await push(
+        args.versionTag,
+        args.environment,
+        { trackAuthor: args.trackAuthor },
+        true
+      );
+
+      console.log("\nVersion tracking completed!\n");
+    } catch (error) {
+      console.error("\nError tracking version:", error.message);
+      process.exit(1);
+    }
+  });
+
+program
   .command("setup-hook")
   .description(
     "Setup Husky git hook for automatic version tracking after git push"
@@ -82,11 +108,6 @@ program
     }
 
     const hookPath = path.join(huskyDir, "pre-push");
-    const handlerPath = path.resolve(
-      __dirname,
-      "hooks",
-      "post-push-handler.js"
-    );
 
     const hookContent = `#!/usr/bin/env sh
 . "$(dirname -- "$0")/_/husky.sh"
@@ -97,7 +118,14 @@ git push $PUSH_ARGS
 PUSH_EXIT_CODE=$?
 
 if [ $PUSH_EXIT_CODE -eq 0 ]; then
-  node "${handlerPath}"
+  if command -v env-version-tracker >/dev/null 2>&1; then
+    env-version-tracker post-push-handler
+  elif command -v npx >/dev/null 2>&1; then
+    npx env-version-tracker post-push-handler
+  else
+    echo "Error: env-version-tracker not found. Please install it globally or use npx."
+    exit 1
+  fi
 fi
 
 exit $PUSH_EXIT_CODE

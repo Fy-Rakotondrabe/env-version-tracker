@@ -1,22 +1,43 @@
 {
   "name": "env-version-tracker",
   "version": "1.0.0",
-  "main": "index.js",
+  "description": "A CLI tool to track deployments version across multiple environments",
+  "main": "cli/index.js",
+  "bin": {
+    "env-version-tracker": "./cli/index.js"
+  },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "prepare": "husky install"
+    "prepare": "husky install || true"
   },
-  "keywords": [],
+  "keywords": [
+    "cli",
+    "version",
+    "tracking",
+    "deployment",
+    "environment",
+    "git",
+    "mongodb",
+    "versioning"
+  ],
   "author": "",
   "license": "ISC",
-  "description": "",
+  "engines": {
+    "node": ">=14.0.0"
+  },
+  "files": [
+    "cli/**/*"
+  ],
   "dependencies": {
     "commander": "^14.0.2",
-    "env-paths": "^3.0.0",
     "mongodb": "^7.0.0",
     "inquirer": "^9.2.0"
   },
   "devDependencies": {
     "husky": "^8.0.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Fy-Rakotondrabe/env-version-tracker"
   }
 }

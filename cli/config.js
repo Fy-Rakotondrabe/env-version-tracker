@@ -1,9 +1,14 @@
-const envPaths = require("env-paths");
 const path = require("path");
 const fs = require("fs");
 
-const paths = envPaths("env-version-tracker");
-const configFile = path.join(paths.config, "config.json");
+function getConfigDir() {
+  const projectRoot = process.cwd();
+  return path.join(projectRoot, ".env-version-tracker");
+}
+
+function getConfigFile() {
+  return path.join(getConfigDir(), "config.json");
+}
 
 const DEFAULT_CONFIG = {
   storage: "local",
@@ -14,6 +19,8 @@ const DEFAULT_CONFIG = {
 };
 
 function loadConfig() {
+  const configFile = getConfigFile();
+  
   if (!fs.existsSync(configFile)) {
     return DEFAULT_CONFIG;
   }
@@ -31,7 +38,10 @@ function loadConfig() {
 
 function saveConfig(config) {
   try {
-    fs.mkdirSync(paths.config, { recursive: true });
+    const configDir = getConfigDir();
+    const configFile = getConfigFile();
+    
+    fs.mkdirSync(configDir, { recursive: true });
     fs.writeFileSync(configFile, JSON.stringify(config, null, 2));
   } catch (error) {
     throw new Error(`Failed to save config: ${error.message}`);
