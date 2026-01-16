@@ -122,7 +122,7 @@ program
 
     // Git n'a pas de hook post-push natif, on utilise pre-push + state file
     // OU on crée un alias custom
-    const aliasName = "gpush";
+    const aliasName = "ppush";
     const wrapperScript = path.join(configDir, "git-push-wrapper.sh");
 
     const scriptContent = `#!/usr/bin/env bash
@@ -172,7 +172,7 @@ exit $PUSH_EXIT_CODE
     try {
       const absoluteScriptPath = path.resolve(wrapperScript);
 
-      // Option 1: Créer un alias 'gpush' (nom différent pour éviter conflits)
+      // Option 1: Créer un alias 'ppush' (nom différent pour éviter conflits)
       execSync(
         `git config --local alias.${aliasName} '!${absoluteScriptPath}'`,
         {
@@ -251,7 +251,7 @@ program
   .command("remove-hook")
   .description("Remove git alias")
   .action(() => {
-    const aliases = ["push", "gpush"];
+    const aliases = ["push", "ppush"];
     let removed = false;
 
     for (const alias of aliases) {

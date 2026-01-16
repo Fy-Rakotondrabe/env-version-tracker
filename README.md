@@ -37,7 +37,7 @@ If you want the tool to ask for version info automatically after each git push:
 evt setup-hook
 ```
 
-This creates a `gpush` alias that you can use instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
+This creates a `ppush` alias that you can use instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
 
 **To override `git push` directly (may cause conflicts):**
 
@@ -56,10 +56,10 @@ evt push major production
 ```
 
 **With alias installed:**
-Use `git gpush` instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
+Use `git ppush` instead of `git push`. After a successful push, you'll be prompted for version tag and environment.
 
 ```bash
-git gpush origin main
+git ppush origin main
 # After successful push, prompts appear automatically:
 # ? What version tag? (Use arrow keys)
 # ? Which environment?
@@ -79,15 +79,15 @@ git gpush origin main
 - `environment`: `dev`, `staging`, `preprod`, `production`
 - `--track-author`: Include git author email
 
-**`setup-hook`** - Enable auto-tracking by creating a `gpush` git alias
+**`setup-hook`** - Enable auto-tracking by creating a `ppush` git alias
 
-Creates a `git gpush` command that wraps `git push` and triggers version tracking after successful pushes. This is the recommended approach to avoid conflicts with the standard `git push` command.
+Creates a `git ppush` command that wraps `git push` and triggers version tracking after successful pushes. This is the recommended approach to avoid conflicts with the standard `git push` command.
 
 **`setup-push-alias`** - Override `git push` directly with version tracking
 
 ⚠️ **Warning:** This overrides the standard `git push` command and may cause conflicts. Use `setup-hook` instead for a safer approach.
 
-**`remove-hook`** - Remove git aliases (`gpush` and `push` if configured)
+**`remove-hook`** - Remove git aliases (`ppush` and `push` if configured)
 
 ## How it works
 
@@ -98,7 +98,7 @@ Creates a `git gpush` command that wraps `git push` and triggers version trackin
 
 ## What gets created
 
-After running `setup-hook`, a git alias `gpush` is configured in your local git config.
+After running `setup-hook`, a git alias `ppush` is configured in your local git config.
 
 Your project will have:
 
@@ -132,7 +132,7 @@ evt push minor staging --track-author true
 **With alias (automatic):**
 
 ```bash
-git gpush origin main
+git ppush origin main
 # After successful push, prompts appear automatically:
 # 🚀 Post-push handler triggered!
 # Tracking version...
@@ -173,7 +173,7 @@ MongoDB uses the same structure.
 
 **Alias not working?**
 
-- Check if the alias exists: `git config --local --get alias.gpush`
+- Check if the alias exists: `git config --local --get alias.ppush`
 - Verify the script exists: `ls -la .env-version-tracker/git-push-wrapper.sh`
 - Check debug logs: `cat /tmp/evt-debug.log`
 
@@ -182,14 +182,14 @@ MongoDB uses the same structure.
 ```bash
 evt remove-hook
 # Or manually:
-git config --local --unset alias.gpush
+git config --local --unset alias.ppush
 git config --local --unset alias.push
 ```
 
 ## TODO
 
 - [ ] On config, ask for env file instead of asking directly the remote storage path
-- [ ] Use husky or another git hook instead of gpush alias
+- [ ] Use husky or another git hook instead of ppush alias
 - [ ] Add another storage provider
 
 ## Requirements
