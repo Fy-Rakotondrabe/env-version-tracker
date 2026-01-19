@@ -252,9 +252,7 @@ program
       fs.mkdirSync(hooksDir, { recursive: true });
     }
 
-    // Git n'a pas de hook post-push natif, on utilise pre-push + state file
-    // OU on crée un alias custom
-    const aliasName = "ppush";
+    const aliasName = "deploy";
     const wrapperScript = path.join(configDir, "git-push-wrapper.sh");
 
     const scriptContent = `#!/usr/bin/env bash
@@ -265,7 +263,6 @@ echo "=== Git Push Wrapper Started at $(date) ===" >> "$LOG_FILE"
 echo "Command: git push $@" >> "$LOG_FILE"
 echo "PWD: $(pwd)" >> "$LOG_FILE"
 
-# Exécuter le vrai git push
 command git push "$@"
 PUSH_EXIT_CODE=$?
 
@@ -277,7 +274,6 @@ if [ $PUSH_EXIT_CODE -eq 0 ]; then
   PROJECT_DIR="$(git rev-parse --show-toplevel)"
   echo "Project dir: $PROJECT_DIR" >> "$LOG_FILE"
   
-  # Chercher le CLI
   if [ -f "$PROJECT_DIR/node_modules/.bin/evt" ]; then
     echo "Using local CLI" >> "$LOG_FILE"
     "$PROJECT_DIR/node_modules/.bin/evt" post-push-handler
@@ -304,7 +300,7 @@ exit $PUSH_EXIT_CODE
     try {
       const absoluteScriptPath = path.resolve(wrapperScript);
 
-      // Option 1: Créer un alias 'ppush' (nom différent pour éviter conflits)
+      // Option 1: Créer un alias 'deploy' (nom différent pour éviter conflits)
       execSync(
         `git config --local alias.${aliasName} '!${absoluteScriptPath}'`,
         {
@@ -383,7 +379,7 @@ program
   .command("remove-hook")
   .description("Remove git alias")
   .action(() => {
-    const aliases = ["push", "ppush"];
+    const aliases = ["push", "deploy"];
     let removed = false;
 
     for (const alias of aliases) {
