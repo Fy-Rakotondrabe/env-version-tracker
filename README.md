@@ -10,6 +10,15 @@ npm install --save-dev env-version-tracker
 
 After installation, use the `evt` command (short for **E**nv **V**ersion **T**racker).
 
+**Using npx (without installation):**
+
+```bash
+npx evt <command>
+# Example:
+npx evt config remote --env-file-dev .env.dev
+npx evt push patch dev
+```
+
 ## Setup
 
 ### 1. Configure where to store versions
@@ -152,9 +161,15 @@ git deploy origin main
 
 - `version-tag`: `major`, `minor`, `patch`, or exact version like `1.2.3`
 - `environment`: `dev`, `staging`, `preprod`, `production`
-- `--track-author`: Include git author email
+- `--track-author`: Include git author email (flag, no value needed)
 
-**Note:** For remote storage, the tool automatically loads the `.env` file configured for the specified environment. If no `.env` file is configured, you'll get an error with instructions to configure it.
+**Important notes:**
+- For remote storage, the tool automatically loads the `.env` file configured for the specified environment. If no `.env` file is configured, you'll get an error with instructions to configure it.
+- **To use `--track-author`**, you must have git configured with your email:
+  ```bash
+  git config --global user.email "your.email@example.com"
+  ```
+- The tool validates configuration and version format **before** pushing to git, so you can use `git push` separately if needed.
 
 **`setup-hook`** - Enable auto-tracking by creating a `deploy` git alias
 
@@ -274,8 +289,12 @@ git config --local --unset alias.push
 
 ## Requirements
 
-- Node.js >= 14.0.0
+- Node.js >= 20.0.0 (tested with v20 and v22)
 - Git repo (for commit info)
+- Git configured with user email if using `--track-author`:
+  ```bash
+  git config --global user.email "your.email@example.com"
+  ```
 
 ## License
 

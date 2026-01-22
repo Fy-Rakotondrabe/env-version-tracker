@@ -6,7 +6,14 @@ import { push } from "./push.js";
 import { execSync } from "child_process";
 import * as fs from "fs";
 import * as path from "path";
-import { promptForPushArgs } from "./prompts.js";
+import inquirer from "inquirer";
+import {
+  promptForPushArgs,
+  promptForStoragePath,
+  promptForEnvFilesPerEnvironment,
+  promptForVersionTag,
+  promptForEnvironment,
+} from "./prompts.js";
 import { Config } from "./types.js";
 import { printEnvFileInstructions } from "./env-loader.js";
 
@@ -60,9 +67,40 @@ program
     "--storage-collection <storage-collection>",
     "The collection to the tracking storage (deprecated)"
   )
-  .action((storage: string, options: any) => {
+  .action(async (storage: string | undefined, options: any) => {
+    let storageType: "local" | "remote";
+    
+    // Prompt for storage type if not provided
+    if (!storage) {
+      const answer = await inquirer.prompt([
+        {
+          type: "list",
+          name: "storage",
+          message: "Which storage type?",
+          choices: [
+            { name: "Local (JSON file)", value: "local" },
+            { name: "Remote (MongoDB)", value: "remote" },
+          ],
+        },
+      ]);
+      storageType = answer.storage;
+    } else {
+      // Validate storage type
+      const validStorageTypes = ["local", "remote"];
+      if (!validStorageTypes.includes(storage.toLowerCase())) {
+        console.error(`\n❌ Error: Invalid storage type "${storage}"`);
+        console.log("\nValid storage types:");
+        console.log("  - local   (JSON file)");
+        console.log("  - remote  (MongoDB)");
+        console.log("\nExample:");
+        console.log("  evt config local --storage-path ./versions.json");
+        console.log("  evt config remote --env-file-dev .env.dev");
+        process.exit(1);
+      }
+      storageType = storage.toLowerCase() as "local" | "remote";
+    }
+    
     const config = loadConfig();
-    const storageType = storage as "local" | "remote";
 
     if (storageType === "remote") {
       // Initialize storageEnvFiles if not present
@@ -185,14 +223,14 @@ program
     "The environment to push the changes to [dev, staging, preprod, production]"
   )
   .option(
-    "--track-author <track-author>",
-    "Track the author of the commit [true, false] (default: false)"
+    "--track-author",
+    "Track the author of the commit (requires git user.email configured)"
   )
   .action(
     (
       versionTag: string,
       environment: string,
-      options: { trackAuthor?: string }
+      options: { trackAuthor?: boolean }
     ) => {
       push(versionTag, environment, options);
     }

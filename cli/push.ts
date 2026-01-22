@@ -147,35 +147,8 @@ export async function push(
       throw new Error("Environment is required");
     }
 
-    if (!skipGitPush) {
-      const currentBranch = exec(`git branch --show-current`);
-
-      try {
-        const remoteBranch = `origin/${currentBranch}`;
-        const localCommit = exec(`git rev-parse HEAD`);
-        let remoteCommit: string | null = null;
-
-        try {
-          remoteCommit = exec(`git rev-parse ${remoteBranch}`);
-        } catch (error) {
-          remoteCommit = null;
-        }
-
-        if (remoteCommit && localCommit === remoteCommit) {
-          throw new Error(
-            "No changes to push. Local branch is already up-to-date with remote."
-          );
-        }
-
-        exec(`git push origin ${currentBranch} -u`);
-      } catch (error) {
-        const err = error as Error;
-        if (err.message.includes("No changes to push")) {
-          throw err;
-        }
-        exec(`git push origin ${currentBranch} -u`);
-      }
-    }
+    // Validation: Ne pas faire git push en premier, valider d'abord la config
+    // Charger et valider la config AVANT le git push
 
     const config = loadConfig();
 
@@ -219,21 +192,91 @@ export async function push(
       config.storageEnvFile = envFile;
     }
 
+    // Valider le format de version si c'est un semver personnalisé
+    const isValidSemver = /^\d+\.\d+\.\d+$/.test(versionTag);
+    const isValidTag = ["major", "minor", "patch"].includes(versionTag.toLowerCase());
+    
+    if (!isValidSemver && !isValidTag) {
+      console.error(`\n❌ Error: Invalid version tag "${versionTag}"`);
+      console.log("\nValid options:");
+      console.log("  - major, minor, patch (auto-increment)");
+      console.log("  - Semantic version format: X.Y.Z (e.g., 1.2.3)");
+      throw new Error(`Invalid version tag: ${versionTag}`);
+    }
+
+    // Valider la dernière version existante
     const lastSavedVersion = await getLastSavedVersion(config, environment);
     const isFirstVersion = !lastSavedVersion;
+    
+    if (lastSavedVersion) {
+      const versionParts = lastSavedVersion.version.split(".").map(Number);
+      if (versionParts.length !== 3 || versionParts.some(isNaN)) {
+        console.error(
+          `\n❌ Error: Corrupted version in storage: "${lastSavedVersion.version}"`
+        );
+        console.log("\nThe version format must be X.Y.Z (e.g., 1.0.0)");
+        console.log("Please fix the version in your storage manually or reset it.");
+        throw new Error(`Invalid version format in storage: ${lastSavedVersion.version}`);
+      }
+    }
+
+    // Maintenant seulement faire le git push si tout est valide
+    if (!skipGitPush) {
+      const currentBranch = exec(`git branch --show-current`);
+
+      try {
+        const remoteBranch = `origin/${currentBranch}`;
+        const localCommit = exec(`git rev-parse HEAD`);
+        let remoteCommit: string | null = null;
+
+        try {
+          remoteCommit = exec(`git rev-parse ${remoteBranch}`);
+        } catch (error) {
+          remoteCommit = null;
+        }
+
+        if (remoteCommit && localCommit === remoteCommit) {
+          console.error(
+            "\n❌ No changes to push. Local branch is already up-to-date with remote."
+          );
+          throw new Error("No changes to push");
+        }
+
+        console.log("🚀 Pushing to remote...");
+        exec(`git push origin ${currentBranch} -u`);
+        console.log("✅ Push successful!");
+      } catch (error) {
+        const err = error as Error;
+        if (err.message.includes("No changes to push")) {
+          throw err;
+        }
+        console.log("🚀 Pushing to remote...");
+        exec(`git push origin ${currentBranch} -u`);
+        console.log("✅ Push successful!");
+      }
+    }
+
     const currentVersion = lastSavedVersion
       ? lastSavedVersion.version
       : DEFAULT_VERSION;
 
     let author: string | null = null;
-    const trackAuthor =
-      options.trackAuthor === "true" || options.trackAuthor === true;
+    const trackAuthor = options.trackAuthor === true;
     if (trackAuthor) {
       try {
         author = exec("git config user.email");
+        if (!author) {
+          console.warn(
+            "\n⚠️  Warning: Git user.email is not configured. Author will not be tracked."
+          );
+          console.log("To configure git user.email, run:");
+          console.log('  git config --global user.email "your.email@example.com"');
+        }
       } catch (error) {
         const err = error as Error;
-        console.warn("Warning: Could not get git email:", err.message);
+        console.warn("\n⚠️  Warning: Could not get git email:", err.message);
+        console.log("To configure git user.email, run:");
+        console.log('  git config --global user.email "your.email@example.com"');
       }
     }
 
